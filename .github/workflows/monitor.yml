@@ -17,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -32,6 +32,8 @@ jobs:
           MATCH_FIELD: ${{ vars.MATCH_FIELD }}
           NOTIFY_ON_FIRST_RUN: ${{ vars.NOTIFY_ON_FIRST_RUN }}
           ALERT_ON_CANCEL: ${{ vars.ALERT_ON_CANCEL }}
+          ALIVE_MAIL_DAYS: ${{ vars.ALIVE_MAIL_DAYS }}
+          HEARTBEAT_DAYS:  ${{ vars.HEARTBEAT_DAYS }}
           SMTP_HOST:   ${{ vars.SMTP_HOST }}
           SMTP_PORT:   ${{ vars.SMTP_PORT }}
           SMTP_USER:   ${{ secrets.SMTP_USER }}
