@@ -35,15 +35,30 @@ from bs4 import BeautifulSoup
 
 KST = timezone(timedelta(hours=9))
 BASE = "https://nedrug.mfds.go.kr"
-TARGET_URL = os.getenv("TARGET_URL", f"{BASE}/pbp/CCBAE01")
-STATE_PATH = os.getenv("STATE_PATH", "state/seen.json")
+
+
+def env_str(name, default):
+    """환경변수 읽기. 미설정이거나 빈 값이면 기본값."""
+    v = (os.getenv(name) or "").strip()
+    return v if v else default
+
+
+def env_int(name, default):
+    """숫자 환경변수 읽기. 비었거나 숫자가 아니면 기본값."""
+    try:
+        return int(env_str(name, str(default)))
+    except ValueError:
+        return default
+
+TARGET_URL = env_str("TARGET_URL", f"{BASE}/pbp/CCBAE01")
+STATE_PATH = env_str("STATE_PATH", "state/seen.json")
 MAX_KEEP = 20000
 DEBUG = os.getenv("DEBUG") == "1"
-ALERT_ON_CANCEL = os.getenv("ALERT_ON_CANCEL", "1") == "1"
+ALERT_ON_CANCEL = env_str("ALERT_ON_CANCEL", "1") == "1"
 # 저장소 활동 유지용: 이 일수마다 기록 파일에 날짜를 찍어 커밋을 발생시킴
-HEARTBEAT_DAYS = int(os.getenv("HEARTBEAT_DAYS", "14"))
+HEARTBEAT_DAYS = env_int("HEARTBEAT_DAYS", 14)
 # 생존 확인 메일: 이 일수마다 "정상 작동 중" 메일 발송 (0이면 끔)
-ALIVE_MAIL_DAYS = int(os.getenv("ALIVE_MAIL_DAYS", "7"))
+ALIVE_MAIL_DAYS = env_int("ALIVE_MAIL_DAYS", 7)
 
 COLS = ["no", "product", "company", "permit_date", "cancel_date", "class"]
 
@@ -187,9 +202,9 @@ def send_mail(subject, body):
     if not (user and pw):
         log("SMTP 미설정 → 메일 생략")
         return
-    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    port = int(os.getenv("SMTP_PORT", "465"))
-    to = [x.strip() for x in os.getenv("MAIL_TO", user).split(",") if x.strip()]
+    host = env_str("SMTP_HOST", "smtp.gmail.com")
+    port = env_int("SMTP_PORT", 465)
+    to = [x.strip() for x in env_str("MAIL_TO", user).split(",") if x.strip()]
 
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -249,7 +264,7 @@ def format_item(it, matched):
 # ------------------------------------------------------------------ main
 def main():
     keywords = [k.strip() for k in os.getenv("KEYWORDS", "").split(",") if k.strip()]
-    field = os.getenv("MATCH_FIELD", "product")
+    field = env_str("MATCH_FIELD", "product")
     log(f"키워드: {keywords or '(지정 없음 → 전부)'} / 매칭범위: {field}")
 
     rows = parse_rows(fetch(TARGET_URL))
