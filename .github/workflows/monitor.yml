@@ -2,7 +2,7 @@ name: nedrug monitor
 
 on:
   schedule:
-    - cron: "7 * * * *"       # 매시 7분경 (GitHub 사정으로 지연될 수 있음)
+    - cron: "*/20 * * * *"    # 20분마다 (GitHub가 건너뛰어도 1시간 내 최소 1회 확보)
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -34,6 +34,7 @@ jobs:
           ALERT_ON_CANCEL: ${{ vars.ALERT_ON_CANCEL }}
           ALIVE_MAIL_DAYS: ${{ vars.ALIVE_MAIL_DAYS }}
           HEARTBEAT_DAYS:  ${{ vars.HEARTBEAT_DAYS }}
+          FAIL_ALERT_AFTER: ${{ vars.FAIL_ALERT_AFTER }}
           SMTP_HOST:   ${{ vars.SMTP_HOST }}
           SMTP_PORT:   ${{ vars.SMTP_PORT }}
           SMTP_USER:   ${{ secrets.SMTP_USER }}
