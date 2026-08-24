@@ -59,6 +59,8 @@ ALERT_ON_CANCEL = env_str("ALERT_ON_CANCEL", "1") == "1"
 HEARTBEAT_DAYS = env_int("HEARTBEAT_DAYS", 14)
 # 생존 확인 메일: 이 일수마다 "정상 작동 중" 메일 발송 (0이면 끔)
 ALIVE_MAIL_DAYS = env_int("ALIVE_MAIL_DAYS", 7)
+# 사이트 접속이 이 횟수만큼 연속 실패하면 경고 메일 발송
+FAIL_ALERT_AFTER = env_int("FAIL_ALERT_AFTER", 3)
 
 COLS = ["no", "product", "company", "permit_date", "cancel_date", "class"]
 
@@ -82,19 +84,30 @@ def norm(s: str) -> str:
 
 
 # ------------------------------------------------------------------ fetch
-def fetch(url, tries=3):
+# 접속 실패 시 재시도 간격(초). 정부 사이트가 일시적으로 응답하지 않는 일이 잦음
+RETRY_WAITS = [5, 15, 30, 60, 90]
+
+
+def fetch(url):
+    """실패 시 점점 길게 기다리며 재시도. 모두 실패하면 예외."""
     last = None
-    for i in range(tries):
+    for i, wait in enumerate([0] + RETRY_WAITS):
+        if wait:
+            log(f"  {wait}초 후 재시도...")
+            time.sleep(wait)
         try:
-            r = requests.get(url, headers=HEADERS, timeout=30)
+            # (연결 대기 20초, 응답 대기 60초)
+            r = requests.get(url, headers=HEADERS, timeout=(20, 60))
             r.raise_for_status()
             if not r.encoding or r.encoding.lower() == "iso-8859-1":
                 r.encoding = r.apparent_encoding or "utf-8"
+            if i:
+                log(f"  재시도 {i}회 만에 성공")
             return r.text
         except Exception as e:  # noqa: BLE001
             last = e
-            log(f"  fetch 실패 {i+1}/{tries}: {e}")
-            time.sleep(4 * (i + 1))
+            short = str(e).split("(Caused by")[0].strip()
+            log(f"  접속 실패 {i+1}/{len(RETRY_WAITS)+1}: {short}")
     raise RuntimeError(f"페이지 요청 실패: {last}")
 
 
@@ -267,7 +280,35 @@ def main():
     field = env_str("MATCH_FIELD", "product")
     log(f"키워드: {keywords or '(지정 없음 → 전부)'} / 매칭범위: {field}")
 
-    rows = parse_rows(fetch(TARGET_URL))
+    st_early = load_state()
+    try:
+        html = fetch(TARGET_URL)
+    except RuntimeError as e:
+        # 식약처 서버가 응답하지 않는 경우. 다음 실행에서 다시 시도한다.
+        streak = int(st_early.get("fail_streak", 0)) + 1
+        st_early["fail_streak"] = streak
+        st_early["last_fail_at"] = datetime.now(KST).isoformat(timespec="seconds")
+        log(f"접속 실패 (연속 {streak}회): {e}")
+
+        if streak == FAIL_ALERT_AFTER:
+            send_mail(
+                "[의약품] ⚠️ 사이트 접속 실패 - 모니터링 일시 중단",
+                f"식약처 사이트에 연속 {streak}회 접속하지 못했습니다.\n\n"
+                f"시각: {datetime.now(KST):%Y-%m-%d %H:%M} KST\n"
+                f"내용: {e}\n\n"
+                f"사이트 점검이나 일시적 장애일 가능성이 큽니다.\n"
+                f"프로그램은 계속 재시도하며, 복구되면 자동으로 정상화됩니다.\n"
+                f"이 메일이 반복되면 아래 주소가 열리는지 직접 확인해 보세요.\n{TARGET_URL}",
+            )
+            log("접속 실패 경고 메일 발송")
+
+        save_state(st_early)
+        # 일시적 장애는 실패로 처리하지 않음(빨간 X 방지). 지속되면 실패 처리.
+        if streak >= FAIL_ALERT_AFTER:
+            return 1
+        return 0
+
+    rows = parse_rows(html)
     log(f"1페이지에서 {len(rows)}건 파싱")
 
     if DEBUG:
@@ -286,7 +327,10 @@ def main():
     if not rows:
         raise RuntimeError("목록을 한 건도 못 읽었습니다. DEBUG=1로 확인하세요.")
 
-    st = load_state()
+    st = st_early
+    if st.get("fail_streak"):
+        log(f"접속 복구됨 (직전 연속 실패 {st['fail_streak']}회)")
+        st["fail_streak"] = 0
     seen = set(st["seen"])
     first_run = not seen
 
