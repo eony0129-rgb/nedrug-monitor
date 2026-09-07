@@ -84,6 +84,6 @@
  "last_alive_mail": "2026-08-24",
  "heartbeat": "2026-09-07",
  "last_alert_at": "2026-08-25",
- "fail_streak": 2,
- "last_fail_at": "2026-09-07T10:54:44+09:00"
+ "fail_streak": 3,
+ "last_fail_at": "2026-09-07T11:06:04+09:00"
 }
