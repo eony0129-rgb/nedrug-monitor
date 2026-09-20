@@ -128,8 +128,8 @@
  ],
  "last_new_at": "2026-09-20",
  "last_alive_mail": "2026-08-24",
- "heartbeat": "2026-09-07",
+ "heartbeat": "2026-09-21",
  "last_alert_at": "2026-09-15",
- "fail_streak": 5,
+ "fail_streak": 0,
  "last_fail_at": "2026-09-21T01:06:09+09:00"
 }
