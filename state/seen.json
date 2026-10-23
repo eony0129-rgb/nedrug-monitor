@@ -286,6 +286,6 @@
  "last_alive_mail": "2026-10-23",
  "heartbeat": "2026-10-19",
  "last_alert_at": "2026-09-15",
- "fail_streak": 0,
- "last_fail_at": "2026-10-23T04:36:04+09:00"
+ "fail_streak": 1,
+ "last_fail_at": "2026-10-23T16:06:07+09:00"
 }
