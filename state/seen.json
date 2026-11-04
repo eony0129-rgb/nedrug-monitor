@@ -358,6 +358,6 @@
  "last_alive_mail": "2026-10-23",
  "heartbeat": "2026-11-02",
  "last_alert_at": "2026-09-15",
- "fail_streak": 1,
+ "fail_streak": 0,
  "last_fail_at": "2026-11-04T17:36:00+09:00"
 }
